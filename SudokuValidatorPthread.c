@@ -1,4 +1,5 @@
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -129,24 +130,39 @@ int check_matrix_fn(void* coord_x_void_ptr, void* coord_y_void_ptr)
 
 // this function is run by the second thread 
 void *check_columns_thread_fn(void *n){
+  pid_t tid;
+
+  tid = syscall(SYS_gettid);
+  printf("check_columns_thread_fn on thread: %d\n", (int)tid);
+
   for(int i = 0; i<GRIDN; i++){
     check_columns_fn(&i);
   }
   printf("CHECK COLUMNS THREAD FN\n");
-  return NULL;
+  pthread_exit(0);
 }
 
 // this function is run by the first thread 
 void *check_rows_thread_fn(void *n){
+  pid_t tid;
+
+  tid = syscall(SYS_gettid);
+  printf("check_rows_thread_fn on thread: %d\n", (int)tid);
+
   for(int i = 0; i<GRIDN; i++){
     check_rows_fn(&i);
   }
   printf("CHECK ROWS THREAD FN\n");
-  return NULL;
+  pthread_exit(0);
 }
 
 // this function is run by the first thread 
 void *check_matrix_thread_fn(void *n){
+  pid_t tid;
+
+  tid = syscall(SYS_gettid);
+  printf("check_matrix_thread_fn on thread: %d\n", (int)tid);
+
   for(int i = 0; i<(int)GRIDN/3; i++){
     for(int j = 0; j<(int)GRIDN/3; j++){
       printf("%d, %d\n", matrix_index[i],matrix_index[j]);
@@ -154,7 +170,7 @@ void *check_matrix_thread_fn(void *n){
     }
   }
   printf("CHECK MATRIX THREAD FN\n");
-  return NULL;
+  pthread_exit(0);
 }
 
 int main(int argc, char *argv[])
@@ -176,6 +192,11 @@ int main(int argc, char *argv[])
   for(int i = 0; i<s.st_size; i++){
     sudoku_grid[(int)floor(i/GRIDN)][i%GRIDN] = &addr_sudoku[i];
   }
+
+  pid_t tid;
+
+  tid = syscall(SYS_gettid);
+  printf("main_thread on thread: %d\n", (int)tid);  
 
   // this variable is our reference to the second thread
   pthread_t check_columns_thread;
