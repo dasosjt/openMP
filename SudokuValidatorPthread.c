@@ -20,6 +20,7 @@ int check_columns_fn(void *coord_columns_void_ptr)
   // coord x to GRIDN
   int *coord_columns_ptr = (int *)coord_columns_void_ptr, column[GRIDN] = { 0 }, sum = 0;
 
+  #pragma omp parallel for shared(column)
   for(int i = 0; i < GRIDN; i++){
     printf("%d \n", (*(sudoku_grid[(int)*coord_columns_ptr][i]) - '0') - 1);
 
@@ -55,6 +56,7 @@ int check_rows_fn(void *coord_rows_void_ptr)
   // coord x to GRIDN
   int *coord_rows_ptr = (int *)coord_rows_void_ptr, row[GRIDN] = { 0 }, sum = 0;
 
+  #pragma omp parallel for shared(row)
   for(int i = 0; i < GRIDN; i++){
     printf("%d \n", (*(sudoku_grid[(int)*coord_rows_ptr][i]) - '0') - 1);
 
@@ -84,6 +86,46 @@ int check_rows_fn(void *coord_rows_void_ptr)
   }
 }
 
+// this fn is called to check matrix
+int check_matrix_fn(void* coord_x_void_ptr, void* coord_y_void_ptr)
+{
+  //printf("check matrix \n");
+  int mapped_matrix[GRIDN] = { 0 }, sum = 0;
+
+  int *coord_x_ptr = (int *)coord_x_void_ptr;
+  int *coord_y_ptr = (int *)coord_y_void_ptr;
+
+  #pragma omp parallel for shared(mapped_matrix)
+  for(int i = (int)*coord_y_ptr; i < (int)*coord_y_ptr + 3; i++){
+    for(int j = (int)*coord_x_ptr; j < (int)*coord_x_ptr + 3; j++){
+      int temp_index = (*(sudoku_grid[i][j]) - '0') - 1;
+
+      if(mapped_matrix[temp_index] == 1){
+        //TODO: return error
+        printf("repetead value, index %d \n", temp_index);
+      }
+
+      mapped_matrix[temp_index] = 1;
+    }
+  }
+
+  for(int i = 0; i<GRIDN; i++){
+    sum += mapped_matrix[i];
+  }
+
+  if(sum == GRIDN){
+    //TODO: return success
+    printf("check_row result %d\n", sum);
+    return 1;
+  }else{
+    //TODO: return error
+    printf("error, check_row result %d\n", sum);
+    return -1;
+  }
+
+  return 1;
+}
+
 
 // this function is run by the second thread 
 void *check_columns_thread_fn(void *n){
@@ -100,6 +142,18 @@ void *check_rows_thread_fn(void *n){
     check_rows_fn(&i);
   }
   printf("CHECK ROWS THREAD FN\n");
+  return NULL;
+}
+
+// this function is run by the first thread 
+void *check_matrix_thread_fn(void *n){
+  for(int i = 0; i<(int)GRIDN/3; i++){
+    for(int j = 0; j<(int)GRIDN/3; j++){
+      printf("%d, %d\n", matrix_index[i],matrix_index[j]);
+      check_matrix_fn(&matrix_index[i],&matrix_index[j]);
+    }
+  }
+  printf("CHECK MATRIX THREAD FN\n");
   return NULL;
 }
 
@@ -123,8 +177,6 @@ int main(int argc, char *argv[])
     sudoku_grid[(int)floor(i/GRIDN)][i%GRIDN] = &addr_sudoku[i];
   }
 
-  int y = 0;
-
   // this variable is our reference to the second thread
   pthread_t check_columns_thread;
 
@@ -143,5 +195,8 @@ int main(int argc, char *argv[])
     // TODO: return error
     return -1;
   }
+
+  check_matrix_thread_fn(NULL);
+
   close(fd_sudoku);
 }
