@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <pthread.h>
+#include <omp.h>
 
 #define GRIDN 9
 
@@ -18,10 +19,11 @@ int matrix_index[3] = {0, 3, 6};
 // this fn is called to check columns
 int check_columns_fn(void *coord_columns_void_ptr)
 {
+  omp_set_nested(1);
   // coord x to GRIDN
   int *coord_columns_ptr = (int *)coord_columns_void_ptr, column[GRIDN] = { 0 }, sum = 0, i = 0;
 
-  #pragma omp parallel for private(i) shared(column)
+  #pragma omp parallel for private(i) shared(column) schedule(dynamic)
   for(i = 0; i < GRIDN; i++){
     //printf("%d \n", (*(sudoku_grid[(int)*coord_columns_ptr][i]) - '0') - 1);
 
@@ -54,10 +56,11 @@ int check_columns_fn(void *coord_columns_void_ptr)
 // this fn is called to check rows
 int check_rows_fn(void *coord_rows_void_ptr)
 {
+  omp_set_nested(1);
   // coord x to GRIDN
   int *coord_rows_ptr = (int *)coord_rows_void_ptr, row[GRIDN] = { 0 }, sum = 0, i = 0;
 
-  #pragma omp parallel for private(i) shared(row)
+  #pragma omp parallel for private(i) shared(row) schedule(dynamic)
   for(i = 0; i < GRIDN; i++){
     //printf("%d \n", (*(sudoku_grid[(int)*coord_rows_ptr][i]) - '0') - 1);
 
@@ -90,13 +93,14 @@ int check_rows_fn(void *coord_rows_void_ptr)
 // this fn is called to check matrix
 int check_matrix_fn(void* coord_x_void_ptr, void* coord_y_void_ptr)
 {
+  omp_set_nested(1);
   //printf("check matrix \n");
   int mapped_matrix[GRIDN] = { 0 }, sum = 0;
 
   int *coord_x_ptr = (int *)coord_x_void_ptr;
   int *coord_y_ptr = (int *)coord_y_void_ptr;
 
-  //#pragma omp parallel for shared(mapped_matrix)
+  //#pragma omp parallel for shared(mapped_matrix) schedule(dynamic)
   for(int i = (int)*coord_y_ptr; i < (int)*coord_y_ptr + 3; i++){
     for(int j = (int)*coord_x_ptr; j < (int)*coord_x_ptr + 3; j++){
       int temp_index = (*(sudoku_grid[i][j]) - '0') - 1;
@@ -173,6 +177,8 @@ void *check_matrix_thread_fn(void *n){
 
 int main(int argc, char *argv[])
 {
+  omp_set_num_threads(1);
+
   // check 2 arguments
   if(argc != 2)
     return -1;
